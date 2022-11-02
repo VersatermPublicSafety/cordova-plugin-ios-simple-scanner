@@ -10,6 +10,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
     var showGuide:String = "true"
     var pluginOrientation:String = ""
     var originalOrientation:UIInterfaceOrientation?
+    var originalOrientationMask:UIInterfaceOrientationMask?
     var callbackId:String?
     var parentPlugin:CDVPlugin?
     var captureSession:AVCaptureSession?
@@ -32,8 +33,27 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
         return false
     }
     
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        if pluginOrientation == "" {
+            return .all
+        } else {
+            switch(pluginOrientation) {
+            case "landscapeRight":
+                return .landscapeRight
+            case "landscapeLeft":
+                return .landscapeLeft
+            case "portraitUpsideDown":
+                return .portraitUpsideDown
+            default:
+                return .portrait
+            }
+        }
+    }
+    
     convenience init(orientation:String, showguide:String, callback:String, parent:CDVPlugin) {
         self.init(nibName:nil, bundle:nil)
+        
+        UIView.setAnimationsEnabled(false)
         
         pluginOrientation = orientation
         showGuide = showguide
@@ -43,19 +63,40 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
         switch(UIDevice.current.orientation) {
             case .landscapeLeft:
                 originalOrientation = UIInterfaceOrientation.landscapeLeft
+                originalOrientationMask = UIInterfaceOrientationMask.landscapeLeft
                 break;
             case .landscapeRight:
                 originalOrientation = UIInterfaceOrientation.landscapeRight
+                originalOrientationMask = UIInterfaceOrientationMask.landscapeRight
                 break;
             case .portraitUpsideDown:
                 originalOrientation = UIInterfaceOrientation.portraitUpsideDown
+                originalOrientationMask = UIInterfaceOrientationMask.portraitUpsideDown
                 break;
             default:
                 originalOrientation = UIInterfaceOrientation.portrait
+                originalOrientationMask = UIInterfaceOrientationMask.portrait
                 break;
         }
         
-        switch(pluginOrientation) {
+        if #available(iOS 16.0, *) {
+            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+            switch(pluginOrientation) {
+            case "landscapeRight":
+                windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+                break;
+            case "landscapeLeft":
+                windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeLeft))
+                break;
+            case "portraitUpsideDown":
+                windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: .portraitUpsideDown))
+                break;
+            default:
+                windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait))
+                break;
+            }
+        } else {
+            switch(pluginOrientation) {
             case "landscapeRight":
                 UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
                 break;
@@ -67,6 +108,8 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 break;
             default:
                 UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+                break;
+            }
         }
     }
     
@@ -96,21 +139,9 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
 
             // Initialize the video preview layer and add it as a sublayer to the viewPreview view's layer.
             videoPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession!)
-            switch(pluginOrientation) {
-                case "landscapeRight":
-                    videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.landscapeRight
-                    break;
-                case "landscapeLeft":
-                    videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.landscapeLeft
-                    break;
-                case "portraitUpsideDown":
-                    videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.portraitUpsideDown
-                    break;
-                default:
-                    videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.portrait
-            }
-            videoPreviewLayer?.videoGravity = AVLayerVideoGravity.resize
-            videoPreviewLayer?.frame = view.layer.bounds
+            setPreviewOrientation()
+            videoPreviewLayer?.videoGravity = AVLayerVideoGravity.resizeAspectFill
+            videoPreviewLayer?.frame = view.bounds
             view.layer.addSublayer(videoPreviewLayer!)
             
             qrCodeFrameView = UIView()
@@ -119,7 +150,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 qrCodeFrameView.layer.borderColor = UIColor.green.cgColor
                 qrCodeFrameView.layer.borderWidth = 2
                 view.addSubview(qrCodeFrameView)
-                view.bringSubview(toFront:qrCodeFrameView)
+                view.bringSubviewToFront(qrCodeFrameView)
             }
                 
             if(showGuide == "true") {
@@ -132,7 +163,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 if let lineMidLeft = lineMidLeft {
                     lineMidLeft.backgroundColor = .white
                     view.addSubview(lineMidLeft)
-                    view.bringSubview(toFront:lineMidLeft)
+                    view.bringSubviewToFront(lineMidLeft)
                 }
                 
                 lineMidRight = UILabel(frame: CGRect(
@@ -144,7 +175,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 if let lineMidRight = lineMidRight {
                     lineMidRight.backgroundColor = .white
                     view.addSubview(lineMidRight)
-                    view.bringSubview(toFront:lineMidRight)
+                    view.bringSubviewToFront(lineMidRight)
                 }
                 
                 lineBottomLeft = UILabel(frame: CGRect(
@@ -156,7 +187,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 if let lineBottomLeft = lineBottomLeft {
                     lineBottomLeft.backgroundColor = .white
                     view.addSubview(lineBottomLeft)
-                    view.bringSubview(toFront:lineBottomLeft)
+                    view.bringSubviewToFront(lineBottomLeft)
                 }
                 
                 lineTopLeft = UILabel(frame: CGRect(
@@ -168,7 +199,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 if let lineTopLeft = lineTopLeft {
                     lineTopLeft.backgroundColor = .white
                     view.addSubview(lineTopLeft)
-                    view.bringSubview(toFront:lineTopLeft)
+                    view.bringSubviewToFront(lineTopLeft)
                 }
                 
                 lineBottomRight = UILabel(frame: CGRect(
@@ -180,7 +211,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 if let lineBottomRight = lineBottomRight {
                     lineBottomRight.backgroundColor = .white
                     view.addSubview(lineBottomRight)
-                    view.bringSubview(toFront:lineBottomRight)
+                    view.bringSubviewToFront(lineBottomRight)
                 }
 
                 lineTopRight = UILabel(frame: CGRect(
@@ -192,7 +223,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 if let lineTopRight = lineTopRight {
                     lineTopRight.backgroundColor = .white
                     view.addSubview(lineTopRight)
-                    view.bringSubview(toFront:lineTopRight)
+                    view.bringSubviewToFront(lineTopRight)
                 }
             
                 messageLabel = UILabel(frame: CGRect(x:0, y:0, width:view.bounds.size.width, height:40))
@@ -200,7 +231,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 messageLabel.text = "Scanning..."
                 messageLabel.textColor = .white
                 view.addSubview(messageLabel)
-                view.bringSubview(toFront:messageLabel)
+                view.bringSubviewToFront(messageLabel)
             }
             
             cancelButton = UIButton(frame: CGRect(x:view.bounds.size.width - 51, y:5, width:48, height:48))
@@ -208,7 +239,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 cancelButton.setImage(UIImage(named: "ios7-close-empty-white.png"), for: .normal)
                 cancelButton.addTarget(self, action: #selector(cancelButtonAction), for: .touchUpInside)
                 view.addSubview(cancelButton)
-                view.bringSubview(toFront:cancelButton)
+                view.bringSubviewToFront(cancelButton)
             }
 
             flashButton = UIButton(frame: CGRect(x:view.bounds.size.width - 51, y:view.bounds.size.height - 51, width:48, height:48))
@@ -216,7 +247,7 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
                 flashButton.setImage(UIImage(named: "ios7-bolt-outline-white.png"), for: .normal)
                 flashButton.addTarget(self, action: #selector(toggleFlash), for: .touchUpInside)
                 view.addSubview(flashButton)
-                view.bringSubview(toFront:flashButton)
+                view.bringSubviewToFront(flashButton)
             }
 
             // Start video capture.
@@ -225,6 +256,67 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
         } catch {
             print(error)
         }
+    }
+    
+    private func setPreviewOrientation() {
+        if (supportedInterfaceOrientations == .all) {
+            switch(UIDevice.current.orientation) {
+            case .landscapeLeft:
+                videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.landscapeRight
+                break;
+            case .landscapeRight:
+                videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.landscapeLeft
+                break;
+            case .portraitUpsideDown:
+                videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.portraitUpsideDown
+                break;
+            default:
+                videoPreviewLayer?.connection?.videoOrientation  = AVCaptureVideoOrientation.portrait
+                break;
+            }
+        } else {
+            switch(pluginOrientation) {
+            case "landscapeLeft":
+                videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.landscapeLeft
+                break;
+            case "landscapeRight":
+                videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.landscapeRight
+                break;
+            case "portraitUpsideDown":
+                videoPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.portraitUpsideDown
+                break;
+            default:
+                videoPreviewLayer?.connection?.videoOrientation  = AVCaptureVideoOrientation.portrait
+                break;
+            }
+        }
+    }
+    
+    private func setOverlay(to size: CGSize) {
+        lineMidLeft?.frame = CGRect(x:size.width / 7, y:(size.height / 2) - (size.height / 8), width:2, height: size.height / 4)
+        lineMidRight?.frame = CGRect(x:size.width - (size.width / 7), y:(size.height / 2) - (size.height / 8), width:2, height: size.height / 4)
+        lineBottomLeft?.frame = CGRect(x:size.width - (size.width / 7) - (size.width / 12) + 2, y:(size.height / 2) - (size.height / 8), width: size.width / 12, height: 2)
+        lineTopLeft?.frame = CGRect(x:size.width - (size.width / 7) - (size.width / 12) + 2, y:(size.height / 2) + (size.height / 8) - 2, width: size.width / 12, height: 2)
+        lineBottomRight?.frame = CGRect(x:size.width / 7, y:(size.height / 2) - (size.height / 8), width: size.width / 12, height: 2)
+        lineTopRight?.frame = CGRect(x:size.width / 7, y:(size.height / 2) + (size.height / 8) - 2, width: size.width / 12, height: 2)
+        
+        messageLabel?.frame.size = CGSize(width: size.width, height: 40)
+        cancelButton?.frame = CGRect(x:size.width - 51, y:5, width:48, height:48)
+        flashButton?.frame = CGRect(x:size.width - 51, y:size.height - 51, width:48, height:48)
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        videoPreviewLayer?.frame = view.bounds
+        setPreviewOrientation()
+        setOverlay(to: view.bounds.size)
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        
+        setPreviewOrientation()
+        setOverlay(to: size)
     }
     
     @objc func cancelButtonAction(sender: UIButton!) {
@@ -317,8 +409,14 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
         messageLabel = nil
         captureSession = nil
         
-        UIDevice.current.setValue(originalOrientation?.rawValue, forKey: "orientation")
+        if #available(iOS 16.0, *) {
+            let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+            windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: originalOrientationMask!))
+        } else {
+            UIDevice.current.setValue(originalOrientation?.rawValue, forKey: "orientation")
+        }
         
+        UIView.setAnimationsEnabled(true)
         self.dismiss(animated: true, completion: nil)
     }
 }
