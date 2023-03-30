@@ -408,8 +408,10 @@ class BarcodeScannerController : UIViewController, AVCaptureMetadataOutputObject
         qrCodeFrameView = nil
         messageLabel = nil
         captureSession = nil
+				pluginOrientation = ""
         
         if #available(iOS 16.0, *) {
+						setNeedsUpdateOfSupportedInterfaceOrientations()
             let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene
             windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: originalOrientationMask!))
         } else {
