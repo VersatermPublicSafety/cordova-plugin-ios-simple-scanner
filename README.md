@@ -17,7 +17,7 @@ cordova plugin add cordova-plugin-ios-simple-scanner
 
 //or
 
-cordova plugin add https://github.com/DavidBriglio/cordova-plugin-ios-simple-scanner
+cordova plugin add https://github.com/VersatermPublicSafety/cordova-plugin-ios-simple-scanner
 ```
 
 Call the `scanBarcode` method with the following parameters:

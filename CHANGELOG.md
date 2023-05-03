@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.4 - 03/05/2023
+
+- Restores original orientation when camera is closed
+
+## v1.2.3 - 02/11/2022
+
+- Fixed IOS 16 Issues
+
 ## v1.2.2 - 27/10/2020
 
 - Fixed remaining swift 3 code
